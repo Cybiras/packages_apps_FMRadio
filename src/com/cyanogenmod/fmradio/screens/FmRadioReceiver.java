@@ -17,7 +17,10 @@
 package com.cyanogenmod.fmradio.screens;
 
 import android.app.Activity;
+import android.content.Context;
 import android.content.SharedPreferences;
+import android.media.AudioManager;
+import android.media.AudioSystem;
 import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.util.Log;
@@ -48,7 +51,7 @@ public class FmRadioReceiver extends Activity implements OnClickListener, Adapte
     private static final int BAND_SELECTION_MENU = 1;
 
     // Handle to the Media Player that plays the audio from the selected station
-    private MediaPlayer mMediaPlayer;
+    private AudioManager mMediaPlayer;
 
     // The scan listener that receives the return values from the scans
     private FmReceiver.OnScanListener mReceiverScanListener;
@@ -80,7 +83,6 @@ public class FmRadioReceiver extends Activity implements OnClickListener, Adapte
     // Protects the MediaPlayer and FmReceiver against rapid muting causing
     // errors
     private boolean mPauseMutex = false;
-
 
     // The name of the storage string
     public static final String PREFS_NAME = "FMRadioPrefsFile";
@@ -123,6 +125,8 @@ public class FmRadioReceiver extends Activity implements OnClickListener, Adapte
         SharedPreferences settings = getSharedPreferences(PREFS_NAME, 0);
         mSelectedBand = settings.getInt("selectedBand", 1);
         mFmBand = new FmBand(mSelectedBand);
+        mMediaPlayer = (AudioManager)getSystemService(Context.AUDIO_SERVICE);
+        setVolumeControlStream(AudioManager.STREAM_MUSIC);
         setupButtons();
     }
 
@@ -259,10 +263,8 @@ public class FmRadioReceiver extends Activity implements OnClickListener, Adapte
         } catch (IOException e) {
             Utils.debugFunc("Unable to reset correctly E.: " + e, Log.ERROR);
         }
-        if (mMediaPlayer != null) {
-            mMediaPlayer.release();
-            mMediaPlayer = null;
-        }
+        AudioSystem.setDeviceConnectionState(AudioSystem.DEVICE_OUT_FM, AudioSystem.DEVICE_STATE_UNAVAILABLE, "");
+        mMediaPlayer.setParameters("fm_off=1");
     }
 
     /**
@@ -321,13 +323,12 @@ public class FmRadioReceiver extends Activity implements OnClickListener, Adapte
      */
     private void startAudio() {
         Utils.debugFunc("startAudio()", Log.INFO);
-
-        mMediaPlayer = new MediaPlayer();
         try {
-            mMediaPlayer.setDataSource(Constants.MEDIA_SOURCE);
-            mMediaPlayer.prepare();
-            mMediaPlayer.start();
-        } catch (IOException e) {
+            AudioSystem.setForceUse(AudioSystem.FOR_MEDIA, AudioSystem.FORCE_SPEAKER);
+            AudioSystem.setDeviceConnectionState(AudioSystem.DEVICE_OUT_FM, AudioSystem.DEVICE_STATE_UNAVAILABLE, "");
+            AudioSystem.setDeviceConnectionState(AudioSystem.DEVICE_OUT_FM, AudioSystem.DEVICE_STATE_AVAILABLE, "");
+            mMediaPlayer.setParameters("fm_on=1");
+        } catch (Exception e) {
             Utils.debugFunc("startAudio. E.: " + e.getMessage(), Log.ERROR);
             showToast(R.string.unable_to_mediaplayer, Toast.LENGTH_LONG);
         }
@@ -445,10 +446,6 @@ public class FmRadioReceiver extends Activity implements OnClickListener, Adapte
                     Utils.debugFunc("Unable to restart. E.: " + e.getMessage(), Log.ERROR);
                     showToast(R.string.unable_to_restart, Toast.LENGTH_LONG);
                 }
-                if (mMediaPlayer != null) {
-                    mMediaPlayer.release();
-                    mMediaPlayer = null;
-                }
                 turnRadioOn();
                 break;
 
@@ -512,7 +509,6 @@ public class FmRadioReceiver extends Activity implements OnClickListener, Adapte
                     try {
                         mPauseMutex = true;
                         mFmReceiver.resume();
-                        mMediaPlayer.start();
                         mBtnMute.setImageResource(R.drawable.fm_volume_mute);
                     } catch (Exception e) {
                         Utils.debugFunc("Unable to resume. E.: " + e.getMessage(), Log.ERROR);
@@ -523,7 +519,6 @@ public class FmRadioReceiver extends Activity implements OnClickListener, Adapte
                         && !mPauseMutex) {
                     try {
                         mPauseMutex = true;
-                        mMediaPlayer.pause();
                         mFmReceiver.pause();
                         mBtnMute.setImageResource(R.drawable.fm_volume);
                     } catch (Exception e) {
