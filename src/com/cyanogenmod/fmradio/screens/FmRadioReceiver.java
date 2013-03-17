@@ -50,6 +50,8 @@ public class FmRadioReceiver extends Activity implements OnClickListener, Adapte
     // The band menu identifier
     private static final int BAND_SELECTION_MENU = 1;
 
+    private Context context;
+
     // Handle to the Media Player that plays the audio from the selected station
     private AudioManager mMediaPlayer;
 
@@ -103,7 +105,8 @@ public class FmRadioReceiver extends Activity implements OnClickListener, Adapte
     private int mSelectedBand;
 
     //visual components - things we are going to use often
-    private ImageButton mBtnSeekUp, mBtnSeekDown, mBtnFullScan, mBtnMute;
+    private ImageButton mBtnSeekUp, mBtnSeekDown, mBtnFullScan, mBtnMute, mBtnLoudSpeaker;
+    private boolean isSpeakerOn;
     private ProgressBar mProgressScan;
     //TODO : replace gallery with custom implemented widget?
     private Gallery mGalStationsList;
@@ -118,6 +121,7 @@ public class FmRadioReceiver extends Activity implements OnClickListener, Adapte
     @Override
     public void onCreate(Bundle icicle) {
         super.onCreate(icicle);
+        context = getApplicationContext();
         setContentView(R.layout.main);
         mFmReceiver = (FmReceiver) getSystemService("fm_receiver"); //MOCK: new FakeFmReceiver();
         // USE Mock class if you don't have access to device with an FM Chip
@@ -208,6 +212,7 @@ public class FmRadioReceiver extends Activity implements OnClickListener, Adapte
                 mBtnSeekUp.setEnabled(true);
                 mBtnSeekDown.setEnabled(true);
                 mBtnMute.setEnabled(true);
+                mBtnLoudSpeaker.setEnabled(true);
                 mBtnFullScan.setEnabled(true);
                 initialBandscan();
                 startAudio();
@@ -293,7 +298,7 @@ public class FmRadioReceiver extends Activity implements OnClickListener, Adapte
     private void showToast(final int resourceID, final int duration) {
         runOnUiThread(new Runnable() {
             public void run() {
-                Toast.makeText(getApplicationContext(), getString(resourceID), duration).show();
+                Toast.makeText(context, getString(resourceID), duration).show();
             }
         });
     }
@@ -310,6 +315,7 @@ public class FmRadioReceiver extends Activity implements OnClickListener, Adapte
             mBtnSeekUp.setEnabled(false);
             mBtnSeekDown.setEnabled(false);
             mBtnMute.setEnabled(false);
+            mBtnLoudSpeaker.setEnabled(false);
             mBtnFullScan.setEnabled(false);
             showToast(R.string.scanning_for_stations, Toast.LENGTH_LONG);
         } catch (Exception e) {
@@ -324,10 +330,9 @@ public class FmRadioReceiver extends Activity implements OnClickListener, Adapte
     private void startAudio() {
         Utils.debugFunc("startAudio()", Log.INFO);
         try {
-            AudioSystem.setForceUse(AudioSystem.FOR_MEDIA, AudioSystem.FORCE_SPEAKER);
-            AudioSystem.setDeviceConnectionState(AudioSystem.DEVICE_OUT_FM, AudioSystem.DEVICE_STATE_UNAVAILABLE, "");
-            AudioSystem.setDeviceConnectionState(AudioSystem.DEVICE_OUT_FM, AudioSystem.DEVICE_STATE_AVAILABLE, "");
-            mMediaPlayer.setParameters("fm_on=1");
+            boolean speaker = !context.getResources().getBoolean(R.bool.speaker_supported);
+            setSpeakerUI(speaker);
+            setSpeakerFunc(speaker);
         } catch (Exception e) {
             Utils.debugFunc("startAudio. E.: " + e.getMessage(), Log.ERROR);
             showToast(R.string.unable_to_mediaplayer, Toast.LENGTH_LONG);
@@ -354,6 +359,11 @@ public class FmRadioReceiver extends Activity implements OnClickListener, Adapte
 
         mBtnMute = (ImageButton) findViewById(R.id.btn_mute);
         mBtnMute.setOnClickListener(this);
+
+        mBtnLoudSpeaker = (ImageButton) findViewById(R.id.btn_loudspeaker);
+        mBtnLoudSpeaker.setOnClickListener(this);
+        if (!context.getResources().getBoolean(R.bool.speaker_supported))
+            mBtnLoudSpeaker.setVisibility(View.INVISIBLE);
 
         mBtnFullScan = (ImageButton) findViewById(R.id.btn_fullscan);
         mBtnFullScan.setOnClickListener(this);
@@ -386,6 +396,18 @@ public class FmRadioReceiver extends Activity implements OnClickListener, Adapte
             Utils.debugFunc("There is a scan in progress. Stopping it.", Log.INFO);
             mFmReceiver.stopScan();
         }
+    }
+
+    private void setSpeakerUI(boolean on) {
+        mBtnLoudSpeaker.setImageResource(on ? R.drawable.fm_loudspeaker : R.drawable.fm_loudspeaker_off);
+    }
+
+    private void setSpeakerFunc(boolean on) {
+        AudioSystem.setForceUse(AudioSystem.FOR_MEDIA, on ? AudioSystem.FORCE_SPEAKER : AudioSystem.FORCE_NONE);
+        AudioSystem.setDeviceConnectionState(AudioSystem.DEVICE_OUT_FM, AudioSystem.DEVICE_STATE_UNAVAILABLE, "");
+        AudioSystem.setDeviceConnectionState(AudioSystem.DEVICE_OUT_FM, AudioSystem.DEVICE_STATE_AVAILABLE, "");
+        mMediaPlayer.setParameters("fm_on=1");
+        isSpeakerOn = on;
     }
 
     /**
@@ -531,6 +553,13 @@ public class FmRadioReceiver extends Activity implements OnClickListener, Adapte
                 } else {
                     Utils.debugFunc("No action: incorrect state - " + mFmReceiver.getState(), Log.WARN);
                 }
+                break;
+
+            case R.id.btn_loudspeaker:
+                Utils.debugFunc("Loudspeaker pressed", Log.INFO);
+                boolean newState = !isSpeakerOn;
+                setSpeakerUI(newState);
+                setSpeakerFunc(newState);
                 break;
         }
     }

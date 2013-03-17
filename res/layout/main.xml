@@ -59,7 +59,12 @@
                     android:layout_height="wrap_content"
                     android:padding="2dip"/>
         </LinearLayout>
-
+        <LinearLayout
+                android:orientation="horizontal"
+                android:gravity="center_horizontal"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_centerInParent="true">
         <TextView
                 android:id="@+id/tv_ps_text"
                 android:textColor="@color/cyan_neon_lighter"
@@ -84,6 +89,15 @@
                 android:layout_marginRight="6dip"
                 android:layout_toRightOf="@id/tv_ps_text"/>
 
+        <ImageButton
+                android:id="@+id/btn_mute"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dip"
+                android:layout_marginLeft="13dip"
+                android:layout_width="wrap_content"
+                style="@style/HighlightButton"
+                android:src="@drawable/fm_volume"/>
+
         <ImageView
                 android:id="@+id/iv_playback_mode"
                 android:src="@drawable/fm_stereo"
@@ -93,15 +107,14 @@
                 android:layout_marginLeft="13dip"/>
 
         <ImageButton
-                android:id="@+id/btn_mute"
+                android:id="@+id/btn_loudspeaker"
                 android:layout_height="wrap_content"
-                android:layout_gravity="left"
                 android:layout_marginTop="12dip"
-                android:layout_marginRight="13dip"
-                android:layout_alignParentRight="true"
+                android:layout_marginLeft="13dip"
                 android:layout_width="wrap_content"
                 style="@style/HighlightButton"
-                android:src="@drawable/fm_volume"/>
+                android:src="@drawable/fm_loudspeaker_off"/>
+        </LinearLayout>
     </RelativeLayout>
 
     <TextView
